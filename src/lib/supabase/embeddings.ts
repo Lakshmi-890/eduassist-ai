@@ -14,7 +14,7 @@ export async function getEmbedding(text: string): Promise<number[]> {
   
   const hasKey = !!hfToken;
   const model = process.env.HUGGINGFACE_MODEL || 'sentence-transformers/all-MiniLM-L6-v2';
-  const url = `https://api-inference.huggingface.co/models/${model}`;
+  const url = `https://router.huggingface.co/hf-inference/models/${model}`;
 
   console.log(`[HF DIAGNOSTICS] Starting embedding request. Token Configured: ${hasKey}, Model: "${model}", URL: "${url}"`);
 
