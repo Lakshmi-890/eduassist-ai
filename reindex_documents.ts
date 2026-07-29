@@ -41,7 +41,7 @@ const supabaseUrl = env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseKey = env.SUPABASE_SERVICE_ROLE_KEY || env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 const pcApiKey = env.PINECONE_API_KEY || env.PINCONE_API_KEY;
 const pcIndexName = env.PINECONE_INDEX_NAME || env.PINCONE_INDEX_NAME || 'eduassist-ai';
-const hfToken = env.HUGGINGFACE_API_KEY || env.EMBEDDING_API_KEY;
+const hfToken = env.HUGGINGFACE_API_KEY;
 const hfModel = env.HUGGINGFACE_MODEL || 'sentence-transformers/all-MiniLM-L6-v2';
 
 async function getEmbedding(text: string): Promise<number[]> {

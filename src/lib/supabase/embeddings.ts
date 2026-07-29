@@ -9,7 +9,7 @@ export async function getEmbedding(text: string): Promise<number[]> {
     throw new Error('Cannot generate embedding for empty text.');
   }
 
-  const rawToken = process.env.HUGGINGFACE_API_KEY || process.env.EMBEDDING_API_KEY;
+  const rawToken = process.env.HUGGINGFACE_API_KEY;
   const hfToken = rawToken?.trim();
   
   const hasKey = !!hfToken;
