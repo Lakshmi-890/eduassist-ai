@@ -21,18 +21,37 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Missing message or conversationId parameters' }, { status: 400 });
     }
 
-    // 2. Perform vector similarity search for retrieved chunks
+    // 2. Perform vector similarity search for retrieved chunks with detailed diagnostics logging
     let searchResults: any[] = [];
     try {
-      searchResults = await searchSimilarChunks(message, 0.35, 5);
-    } catch (vectorErr) {
-      console.error('Vector search failed, continuing with zero context:', vectorErr);
+      console.log('--- RAG RETRIEVAL DIAGNOSTICS START ---');
+      console.log('User query:', message);
+      
+      // Use 0.30 threshold to relax matching slightly while maintaining factual accuracy
+      searchResults = await searchSimilarChunks(message, 0.30, 5);
+      
+      console.log(`Embedding generated successfully. Pinecone matches found: ${searchResults.length}`);
+      searchResults.forEach((r, idx) => {
+        console.log(`Match #${idx + 1}:`);
+        console.log(`  - Document: ${r.metadata.file_name}`);
+        console.log(`  - Score: ${r.similarity}`);
+        console.log(`  - Text snippet: ${r.content.substring(0, 120)}...`);
+      });
+    } catch (vectorErr: any) {
+      console.error('Vector similarity search failed with technical error:', vectorErr);
+      console.log('--- RAG RETRIEVAL DIAGNOSTICS END (FAILED) ---');
+      return NextResponse.json({ 
+        error: `Vector similarity search failed due to a server configuration or network error: ${vectorErr.message || vectorErr}` 
+      }, { status: 500 });
     }
 
     // 3. Compile context text
     const contextText = searchResults.length > 0
-      ? searchResults.map((r, idx) => `[Source: ${r.metadata.file_name}]\n${r.content}`).join('\n\n---\n\n')
+      ? searchResults.map((r) => `[Source: ${r.metadata.file_name}]\n${r.content}`).join('\n\n---\n\n')
       : 'No relevant educational documents found.';
+      
+    console.log('Final Context sent to LLM:\n', contextText);
+    console.log('--- RAG RETRIEVAL DIAGNOSTICS END ---');
 
     // 4. Fetch last 5 messages for conversational memory
     const { data: dbHistory, error: historyErr } = await adminSupabase

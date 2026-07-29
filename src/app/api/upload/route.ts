@@ -50,6 +50,7 @@ export async function POST(request: Request) {
     }
 
     // 3. Extract plain text content
+    console.log(`[PDF Upload] Starting text extraction for file: ${file.name}`);
     const text = await extractTextFromPDF(file);
     const cleanedText = text
       .replace(/\r\n/g, '\n')
@@ -58,8 +59,10 @@ export async function POST(request: Request) {
       .trim();
 
     if (!cleanedText || cleanedText.length === 0) {
+      console.error('[PDF Upload Failed] Extracted text is empty');
       return NextResponse.json({ error: 'Failed to extract text or PDF is empty.' }, { status: 400 });
     }
+    console.log(`[PDF Upload Success] Extracted text length: ${cleanedText.length} characters`);
 
     // 4. Chunk text into 500-character segments with 50-character overlap
     const chunks: string[] = [];
@@ -77,8 +80,10 @@ export async function POST(request: Request) {
     }
 
     if (chunks.length === 0) {
+      console.error('[PDF Upload Failed] Text split resulted in zero chunks');
       return NextResponse.json({ error: 'Split resulted in 0 text chunks.' }, { status: 400 });
     }
+    console.log(`[PDF Upload] Chunking completed. Total chunks created: ${chunks.length}`);
 
     // 5. Generate embeddings and create metadata for each chunk
     const documentId = uuidv4();
@@ -93,9 +98,13 @@ export async function POST(request: Request) {
       };
     }> = [];
 
+    console.log(`[PDF Upload] Generating Hugging Face embeddings for ${chunks.length} chunks...`);
     for (let i = 0; i < chunks.length; i++) {
       const chunkTextContent = chunks[i];
       const embedding = await getEmbedding(chunkTextContent);
+      
+      console.log(`  - Embedded chunk ${i + 1}/${chunks.length} (dimension: ${embedding.length})`);
+      
       vectors.push({
         id: `${documentId}_${i}`,
         values: embedding,
@@ -107,9 +116,13 @@ export async function POST(request: Request) {
         },
       });
     }
+    console.log(`[PDF Upload] All ${vectors.length} embeddings generated successfully.`);
 
     // 6. Upsert vector payload to Pinecone index
+    const indexName = process.env.PINECONE_INDEX_NAME || process.env.PINCONE_INDEX_NAME || 'eduassist-ai';
+    console.log(`[PDF Upload] Upserting vectors to Pinecone index: "${indexName}"...`);
     await upsertToPinecone(vectors);
+    console.log(`[PDF Upload Success] Pinecone upsert completed. Namespace: "default", Vector count: ${vectors.length}`);
 
     // 7. Track document registration in Supabase 'documents' table
     const adminSupabase = createAdminClient();
@@ -125,12 +138,14 @@ export async function POST(request: Request) {
       });
 
     if (dbError) {
-      console.warn('Metadata logged in Pinecone, but failed to write record in Supabase documents table:', dbError);
+      console.warn('[PDF Upload Warning] Metadata logged in Pinecone, but failed to write record in Supabase documents table:', dbError);
+    } else {
+      console.log(`[PDF Upload Complete] Registered document "${file.name}" (ID: ${documentId}) in Supabase.`);
     }
 
     return NextResponse.json({ status: 'completed', chunks: chunks.length });
   } catch (error: any) {
-    console.error('Error during Pinecone ingestion process:', error);
+    console.error('[PDF Upload Failed] Ingestion crash error:', error);
     return NextResponse.json({ error: error.message || 'Internal Server Error' }, { status: 500 });
   }
 }
