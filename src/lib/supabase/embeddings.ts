@@ -9,13 +9,18 @@ export async function getEmbedding(text: string): Promise<number[]> {
     throw new Error('Cannot generate embedding for empty text.');
   }
 
-  const hfToken = process.env.HUGGINGFACE_API_KEY;
-  if (!hfToken) {
-    throw new Error('HUGGINGFACE_API_KEY is not configured in environment variables.');
-  }
-
+  const rawToken = process.env.HUGGINGFACE_API_KEY || process.env.EMBEDDING_API_KEY;
+  const hfToken = rawToken?.trim();
+  
+  const hasKey = !!hfToken;
   const model = process.env.HUGGINGFACE_MODEL || 'sentence-transformers/all-MiniLM-L6-v2';
-  const url = `https://api-inference.huggingface.co/pipeline/feature-extraction/${model}`;
+  const url = `https://api-inference.huggingface.co/models/${model}`;
+
+  console.log(`[HF DIAGNOSTICS] Starting embedding request. Token Configured: ${hasKey}, Model: "${model}", URL: "${url}"`);
+
+  if (!hasKey) {
+    throw new Error('HUGGINGFACE_API_KEY (or EMBEDDING_API_KEY) is not configured in environment variables.');
+  }
 
   try {
     const response = await fetch(url, {
@@ -30,8 +35,11 @@ export async function getEmbedding(text: string): Promise<number[]> {
       }),
     });
 
+    console.log(`[HF DIAGNOSTICS] Received response status: ${response.status} ${response.statusText}`);
+
     if (!response.ok) {
       const errText = await response.text();
+      console.error(`[HF DIAGNOSTICS] Hugging Face Error Response Body: "${errText}"`);
       throw new Error(`Hugging Face API Error: ${response.status} ${response.statusText} - ${errText}`);
     }
 
@@ -44,18 +52,28 @@ export async function getEmbedding(text: string): Promise<number[]> {
     }
 
     if (!Array.isArray(embedding)) {
+      console.error(`[HF DIAGNOSTICS] Response is not an array. Type: ${typeof json}, Content: ${JSON.stringify(json)}`);
       throw new Error(`Expected array from Hugging Face embedding response, but got: ${typeof embedding}`);
     }
 
     // Since our Pinecone index expects a 384-dimensional vector, let's assert
     if (embedding.length !== 384) {
+      console.error(`[HF DIAGNOSTICS] Dimension mismatch. Expected 384, got ${embedding.length}`);
       throw new Error(`Expected a 384-dimensional embedding, but Hugging Face returned ${embedding.length} dimensions for model ${model}.`);
     }
 
+    console.log(`[HF DIAGNOSTICS] Embedding generated successfully with ${embedding.length} dimensions.`);
     return embedding as number[];
   } catch (error: any) {
-    console.error('Error generating Hugging Face vector embedding:', error);
-    throw new Error(`Embedding generation failed: ${error.message || error}`);
+    console.error('[HF DIAGNOSTICS] Embedding generation failed with exception:', error);
+    
+    let details = error.message || String(error);
+    if (error.cause) {
+      console.error('[HF DIAGNOSTICS] Nested fetch error cause:', error.cause);
+      details += ` (Cause: ${error.cause.message || JSON.stringify(error.cause)})`;
+    }
+    
+    throw new Error(`Embedding generation failed: ${details}`);
   }
 }
 
