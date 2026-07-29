@@ -48,7 +48,7 @@ async function getEmbedding(text: string): Promise<number[]> {
   if (!hfToken) {
     throw new Error('HUGGINGFACE_API_KEY is not configured.');
   }
-  const url = `https://router.huggingface.co/hf-inference/models/${hfModel}`;
+  const url = `https://router.huggingface.co/hf-inference/models/${hfModel}/pipeline/feature-extraction`;
   const response = await fetch(url, {
     method: 'POST',
     headers: {
