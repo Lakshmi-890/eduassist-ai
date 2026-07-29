@@ -1,6 +1,6 @@
 import { createAdminClient } from '@/lib/supabase/admin';
 import { parsePdf, cleanText, chunkText } from '@/lib/pdf';
-import { getEmbedding } from '@/lib/embeddings';
+import { getEmbedding } from '@/lib/supabase/embeddings';
 import { NextResponse } from 'next/server';
 
 export async function POST(request: Request) {
@@ -12,7 +12,7 @@ export async function POST(request: Request) {
     docId = documentId;
 
     if (!docId) {
-      return new NextResponse('Missing documentId parameter', { status: 400 });
+      return NextResponse.json({ error: 'Missing documentId parameter' }, { status: 400 });
     }
 
     // 1. Fetch document record
@@ -63,8 +63,10 @@ export async function POST(request: Request) {
     // 5. Generate Embeddings & Formulate DB payload
     const chunkPayload = [];
     for (const chunk of chunks) {
-      // Generate 1536-dim vector for this text segment
-      const vector = await getEmbedding(chunk.content);
+      const rawVector = await getEmbedding(chunk.content);
+      const vector = rawVector.length < 1536
+        ? [...rawVector, ...new Array(1536 - rawVector.length).fill(0)]
+        : rawVector;
       
       chunkPayload.push({
         document_id: docId,
@@ -112,6 +114,6 @@ export async function POST(request: Request) {
         .eq('id', docId);
     }
 
-    return new NextResponse(err.message || 'Internal Server Error', { status: 500 });
+    return NextResponse.json({ error: err.message || 'Internal Server Error' }, { status: 500 });
   }
 }

@@ -10,7 +10,7 @@ export async function POST(request: Request) {
     // 1. Verify user session
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
-      return new NextResponse('Unauthorized', { status: 401 });
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     // 2. Authorize admin role
@@ -21,7 +21,7 @@ export async function POST(request: Request) {
       .single();
 
     if (profile?.role !== 'admin') {
-      return new NextResponse('Forbidden', { status: 403 });
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
     // 3. Parse file from form data
@@ -29,11 +29,11 @@ export async function POST(request: Request) {
     const file = formData.get('file') as File;
 
     if (!file) {
-      return new NextResponse('Missing file upload', { status: 400 });
+      return NextResponse.json({ error: 'Missing file upload' }, { status: 400 });
     }
 
     if (file.type !== 'application/pdf') {
-      return new NextResponse('Only PDF files are supported', { status: 400 });
+      return NextResponse.json({ error: 'Only PDF files are supported' }, { status: 400 });
     }
 
     const buffer = Buffer.from(await file.arrayBuffer());
@@ -90,7 +90,7 @@ export async function POST(request: Request) {
       if (!hasAdminKey) {
         errorMsg += ' Also, make sure you have added "SUPABASE_SERVICE_ROLE_KEY" to your ".env.local" file (found under Project Settings -> API in Supabase).';
       }
-      return new NextResponse(errorMsg, { status: 500 });
+      return NextResponse.json({ error: errorMsg }, { status: 500 });
     }
 
     // 5. Insert row into documents table
@@ -110,12 +110,12 @@ export async function POST(request: Request) {
       console.error('Database write error:', dbError);
       // Clean up uploaded file if DB log failed
       await uploadClient.storage.from('educational-documents').remove([filePath]);
-      return new NextResponse(`Database registration error: ${dbError.message}`, { status: 500 });
+      return NextResponse.json({ error: `Database registration error: ${dbError.message}` }, { status: 500 });
     }
 
     return NextResponse.json(document);
   } catch (err: any) {
     console.error('Upload route handler crash:', err);
-    return new NextResponse(err.message || 'Internal Server Error', { status: 500 });
+    return NextResponse.json({ error: err.message || 'Internal Server Error' }, { status: 500 });
   }
 }

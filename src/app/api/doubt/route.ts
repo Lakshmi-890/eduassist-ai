@@ -11,13 +11,13 @@ export async function POST(request: Request) {
     // 1. Authenticate user
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
-      return new NextResponse('Unauthorized', { status: 401 });
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const { message, conversationId } = await request.json();
 
     if (!message || !conversationId) {
-      return new NextResponse('Missing message or conversationId parameters', { status: 400 });
+      return NextResponse.json({ error: 'Missing message or conversationId parameters' }, { status: 400 });
     }
 
     // 2. Fetch last 5 messages for conversational memory inside Doubt Solver
@@ -137,6 +137,6 @@ Always adapt your format dynamically to the user's question. Do not refer to any
 
   } catch (err: any) {
     console.error('Doubt Solver API crash:', err);
-    return new NextResponse(err.message || 'Internal Server Error', { status: 500 });
+    return NextResponse.json({ error: err.message || 'Internal Server Error' }, { status: 500 });
   }
 }

@@ -12,13 +12,13 @@ export async function POST(request: Request) {
     // 1. Authenticate user
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
-      return new NextResponse('Unauthorized', { status: 401 });
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const { message, conversationId } = await request.json();
 
     if (!message || !conversationId) {
-      return new NextResponse('Missing message or conversationId parameters', { status: 400 });
+      return NextResponse.json({ error: 'Missing message or conversationId parameters' }, { status: 400 });
     }
 
     // 2. Perform vector similarity search for retrieved chunks
@@ -175,6 +175,6 @@ Always output the appropriate prefix as the first characters of your response. U
 
   } catch (err: any) {
     console.error('Chat API Route Handler Crash:', err);
-    return new NextResponse(err.message || 'Internal Server Error', { status: 500 });
+    return NextResponse.json({ error: err.message || 'Internal Server Error' }, { status: 500 });
   }
 }

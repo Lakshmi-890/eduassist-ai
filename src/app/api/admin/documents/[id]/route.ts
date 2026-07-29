@@ -14,7 +14,7 @@ export async function DELETE(request: Request, { params }: RouteContext) {
     // 1. Verify user session
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
-      return new NextResponse('Unauthorized', { status: 401 });
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     // 2. Authorize admin role
@@ -25,7 +25,7 @@ export async function DELETE(request: Request, { params }: RouteContext) {
       .single();
 
     if (profile?.role !== 'admin') {
-      return new NextResponse('Forbidden', { status: 403 });
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
     const { id } = await params;
@@ -38,7 +38,7 @@ export async function DELETE(request: Request, { params }: RouteContext) {
       .single();
 
     if (fetchErr || !doc) {
-      return new NextResponse('Document not found', { status: 404 });
+      return NextResponse.json({ error: 'Document not found' }, { status: 404 });
     }
 
     // 4. Delete file from Supabase Storage
@@ -78,12 +78,12 @@ export async function DELETE(request: Request, { params }: RouteContext) {
 
     if (deleteErr) {
       console.error('Failed to delete document from database:', deleteErr);
-      return new NextResponse(`Database deletion error: ${deleteErr.message}`, { status: 500 });
+      return NextResponse.json({ error: `Database deletion error: ${deleteErr.message}` }, { status: 500 });
     }
 
     return NextResponse.json({ success: true });
   } catch (err: any) {
     console.error('Delete route handler error:', err);
-    return new NextResponse(err.message || 'Internal Server Error', { status: 500 });
+    return NextResponse.json({ error: err.message || 'Internal Server Error' }, { status: 500 });
   }
 }

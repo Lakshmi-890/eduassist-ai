@@ -15,7 +15,7 @@ export async function GET() {
     return NextResponse.json(faqs || []);
   } catch (err: any) {
     console.error('FAQ GET error:', err);
-    return new NextResponse(err.message || 'Internal Server Error', { status: 500 });
+    return NextResponse.json({ error: err.message || 'Internal Server Error' }, { status: 500 });
   }
 }
 
@@ -28,7 +28,7 @@ export async function POST(request: Request) {
     // 1. Verify user session
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
-      return new NextResponse('Unauthorized', { status: 401 });
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     // 2. Authorize admin role
@@ -39,13 +39,13 @@ export async function POST(request: Request) {
       .single();
 
     if (profile?.role !== 'admin') {
-      return new NextResponse('Forbidden', { status: 403 });
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
     const { id, question, answer } = await request.json();
 
     if (!question || !answer) {
-      return new NextResponse('Question and Answer are required fields.', { status: 400 });
+      return NextResponse.json({ error: 'Question and Answer are required fields.' }, { status: 400 });
     }
 
     if (id) {
@@ -72,7 +72,7 @@ export async function POST(request: Request) {
     }
   } catch (err: any) {
     console.error('FAQ POST error:', err);
-    return new NextResponse(err.message || 'Internal Server Error', { status: 500 });
+    return NextResponse.json({ error: err.message || 'Internal Server Error' }, { status: 500 });
   }
 }
 
@@ -85,7 +85,7 @@ export async function DELETE(request: Request) {
     // 1. Verify user session
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
-      return new NextResponse('Unauthorized', { status: 401 });
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     // 2. Authorize admin role
@@ -96,13 +96,13 @@ export async function DELETE(request: Request) {
       .single();
 
     if (profile?.role !== 'admin') {
-      return new NextResponse('Forbidden', { status: 403 });
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
     const { id } = await request.json();
 
     if (!id) {
-      return new NextResponse('FAQ id parameter is required', { status: 400 });
+      return NextResponse.json({ error: 'FAQ id parameter is required' }, { status: 400 });
     }
 
     const { error } = await adminSupabase
@@ -114,6 +114,6 @@ export async function DELETE(request: Request) {
     return NextResponse.json({ success: true });
   } catch (err: any) {
     console.error('FAQ DELETE error:', err);
-    return new NextResponse(err.message || 'Internal Server Error', { status: 500 });
+    return NextResponse.json({ error: err.message || 'Internal Server Error' }, { status: 500 });
   }
 }
